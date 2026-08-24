@@ -4,8 +4,12 @@ dist
 .env.local
 *.log
 
-# Claude workspace files
-.claude/
+# Claude workspace files — chỉ commit 2 skill deploy/create-pull-request
+.claude/*
+!.claude/skills/
+.claude/skills/*
+!.claude/skills/deploy/
+!.claude/skills/create-pull-request/
 .agents/
 skills-lock.json
 *.tsbuildinfo
