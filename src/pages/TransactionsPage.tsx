@@ -129,11 +129,6 @@ export function TransactionsPage() {
                               mẫu
                             </span>
                           )}
-                          {t.source === "gmail" && (
-                            <span className="ml-2 rounded bg-accent-soft px-1.5 py-0.5 text-[10px] text-accent-deep">
-                              VCB
-                            </span>
-                          )}
                         </p>
                         <p className="text-xs text-muted">
                           {cat?.name ?? "Không có danh mục"}

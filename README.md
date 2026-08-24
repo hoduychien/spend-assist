@@ -56,17 +56,6 @@ khoản phải trả (thẻ tín dụng, vay mượn…) kèm ngày tới hạn.
 còn ≤ 7 ngày hiện vàng và xuất hiện trong mục "Cần để ý" trên Tổng quan. Đánh dấu
 "Đã trả" có thể ghi luôn thành khoản chi hôm nay (danh mục "Khác").
 
-## Đồng bộ giao dịch từ Gmail (VCB)
-
-Chạy thêm `supabase/migrations/0002_gmail_sync.sql` trong SQL Editor, rồi mở trang
-**Đồng bộ** trong app — nó sinh sẵn một Google Apps Script (đã điền URL, anon key
-và import token của bạn). Dán script vào [script.google.com](https://script.google.com),
-đặt trigger 5 phút/lần. Script đọc email biến động số dư từ
-`VCBDigibank@info.vietcombank.com.vn`, bóc các khoản bị trừ tiền và ghi vào bảng
-`transactions` (nguồn `gmail`, danh mục "Khác", chống trùng theo id email).
-Import token chỉ cho phép thêm giao dịch — không đọc/sửa/xóa được dữ liệu; đổi
-token trong trang Đồng bộ để thu hồi script cũ.
-
 ## Ghi chú thiết kế
 
 - Số tiền lưu dạng `bigint` (đồng nguyên) — VND không có phần thập phân.

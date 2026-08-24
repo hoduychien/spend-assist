@@ -15,7 +15,8 @@ export interface Transaction {
   note: string | null;
   occurred_on: string; // yyyy-mm-dd
   is_sample: boolean;
-  source: "manual" | "gmail";
+  source: string;
+  // Nhãn liên kết (vd "debt:<id>" cho khoản chi trả nợ — dùng khi hoàn tác)
   external_id: string | null;
 }
 
@@ -29,11 +30,6 @@ export interface Debt {
   paid_at: string | null; // null = chưa trả
 }
 
-export interface Profile {
-  id: string;
-  full_name: string | null;
-  import_token: string;
-}
 
 export interface Budget {
   id: string;

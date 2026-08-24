@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "./supabase";
-import type { Budget, Category, Debt, Profile, Transaction } from "./types";
+import type { Budget, Category, Debt, Transaction } from "./types";
 import { monthEndISO } from "./format";
 
 // ---------------------------------------------------------------- categories
@@ -317,30 +317,6 @@ export function useSetDebtPaid() {
       qc.invalidateQueries({ queryKey: ["debts"] });
       qc.invalidateQueries({ queryKey: ["transactions"] });
     },
-  });
-}
-
-// ------------------------------------------------------------------- profile
-
-export function useProfile() {
-  return useQuery({
-    queryKey: ["profile"],
-    queryFn: async (): Promise<Profile> => {
-      const { data, error } = await supabase.from("profiles").select("*").single();
-      if (error) throw error;
-      return data;
-    },
-  });
-}
-
-export function useRotateImportToken() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase.rpc("rotate_import_token");
-      if (error) throw error;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["profile"] }),
   });
 }
 

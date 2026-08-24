@@ -7,7 +7,6 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { TransactionsPage } from "./pages/TransactionsPage";
 import { BudgetsPage } from "./pages/BudgetsPage";
 import { CategoriesPage } from "./pages/CategoriesPage";
-import { SyncPage } from "./pages/SyncPage";
 import { DebtsPage } from "./pages/DebtsPage";
 
 const queryClient = new QueryClient({
@@ -40,7 +39,6 @@ export default function App() {
               <Route path="/ngan-sach" element={<BudgetsPage />} />
               <Route path="/du-no" element={<DebtsPage />} />
               <Route path="/danh-muc" element={<CategoriesPage />} />
-              <Route path="/dong-bo" element={<SyncPage />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

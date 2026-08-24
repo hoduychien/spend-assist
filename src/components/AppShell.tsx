@@ -5,7 +5,6 @@ import {
   PiggyBank,
   HandCoins,
   Tags,
-  Mail,
   LogOut,
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
@@ -16,7 +15,6 @@ const TABS = [
   { to: "/ngan-sach", label: "Ngân sách", icon: PiggyBank, end: false },
   { to: "/du-no", label: "Dư nợ", icon: HandCoins, end: false },
   { to: "/danh-muc", label: "Danh mục", icon: Tags, end: false },
-  { to: "/dong-bo", label: "Đồng bộ", icon: Mail, end: false },
 ];
 
 /**
@@ -68,14 +66,14 @@ export function AppShell() {
         aria-label="Điều hướng chính"
         className="fixed inset-x-0 bottom-0 z-40 border-t border-rule bg-paper pb-[env(safe-area-inset-bottom)] lg:hidden"
       >
-        <ul className="grid grid-cols-6">
+        <ul className="grid grid-cols-5">
           {TABS.map(({ to, label, icon: Icon, end }) => (
             <li key={to}>
               <NavLink
                 to={to}
                 end={end}
                 className={({ isActive }) =>
-                  `flex flex-col items-center gap-0.5 whitespace-nowrap px-0.5 py-2 text-[10px] ${
+                  `flex flex-col items-center gap-0.5 whitespace-nowrap px-1 py-2 text-[11px] ${
                     isActive ? "font-medium text-accent-deep" : "text-muted"
                   }`
                 }
