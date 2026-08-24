@@ -1,0 +1,44 @@
+/* Hallmark · macrostructure: Workbench (app shell) · nav: side-rail + bottom tabs · footer: none (app chrome)
+ * theme: custom · vibe: "sổ chi tiêu tử tế — gọn gàng, đáng tin" · paper: oklch(97.5% 0.006 150) · accent: oklch(62.7% 0.17 149.5)
+ * display: Lora · body: Be Vietnam Pro · axes: light / roman-serif / chromatic-green (~150°)
+ * studied: no · context: inferred · genre: editorial · enrichment: none
+ * contrast: pass (40–41) · honest: pass (46) · chrome: pass (47) · tokens: pass (48) · responsive: pass (49) · icons: pass (30) · mobile: pass (34, 49, 50–57)
+ * Hallmark · pre-emit critique: P4 H5 E4 S5 R5 V4
+ */
+
+@theme {
+  /* Paper — green-tinted near-white; never pure #fff */
+  --color-paper: oklch(97.5% 0.006 150);
+  --color-paper-2: oklch(95.4% 0.008 150);
+  --color-paper-3: oklch(92.8% 0.01 150);
+
+  /* Ink — green-tinted near-black; never pure #000 */
+  --color-ink: oklch(23% 0.014 152);
+  --color-ink-2: oklch(40% 0.014 152);
+  --color-muted: oklch(48% 0.014 152);
+
+  /* Hairlines */
+  --color-rule: oklch(88.5% 0.012 150);
+  --color-rule-2: oklch(92% 0.01 150);
+
+  /* Accent — brand #16A34A */
+  --color-accent: oklch(62.7% 0.17 149.5);
+  --color-accent-deep: oklch(46% 0.13 150);
+  --color-accent-soft: oklch(93.5% 0.035 150);
+  --color-focus: oklch(52% 0.19 150);
+
+  /* Budget states */
+  --color-warn: oklch(68% 0.14 75);
+  --color-warn-deep: oklch(47% 0.11 70);
+  --color-warn-soft: oklch(94.5% 0.04 85);
+  --color-danger: oklch(52% 0.19 27);
+  --color-danger-soft: oklch(94.5% 0.028 27);
+
+  /* Type */
+  --font-display: "Lora", Georgia, "Times New Roman", serif;
+  --font-body: "Be Vietnam Pro", ui-sans-serif, system-ui, "Segoe UI", Arial, sans-serif;
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+}
