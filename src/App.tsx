@@ -8,6 +8,7 @@ import { TransactionsPage } from "./pages/TransactionsPage";
 import { BudgetsPage } from "./pages/BudgetsPage";
 import { CategoriesPage } from "./pages/CategoriesPage";
 import { DebtsPage } from "./pages/DebtsPage";
+import { SettingsPage } from "./pages/SettingsPage";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
@@ -39,6 +40,7 @@ export default function App() {
               <Route path="/ngan-sach" element={<BudgetsPage />} />
               <Route path="/du-no" element={<DebtsPage />} />
               <Route path="/danh-muc" element={<CategoriesPage />} />
+              <Route path="/cai-dat" element={<SettingsPage />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

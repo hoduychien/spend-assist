@@ -35,7 +35,8 @@
   --color-danger-soft: oklch(94.5% 0.028 27);
 
   /* Type */
-  --font-display: "Lora", Georgia, "Times New Roman", serif;
+  /* Một font duy nhất: Be Vietnam Pro (display trỏ cùng stack với body) */
+  --font-display: "Be Vietnam Pro", ui-sans-serif, system-ui, "Segoe UI", Arial, sans-serif;
   --font-body: "Be Vietnam Pro", ui-sans-serif, system-ui, "Segoe UI", Arial, sans-serif;
 
   /* Motion */

@@ -58,6 +58,43 @@ export function daysUntil(dateISO: string): number {
   );
 }
 
+// ------------------------------------------------------------------ kỳ lương
+// Quy ước: lương nhận ngày `payday` của tháng M chi trả cho các khoản
+// đến hạn TỪ ngày đó đến trước ngày lương tháng M+1 — tất cả tính vào tháng M.
+// Ví dụ payday 19: dư nợ đến hạn 19/9 → 18/10 tính vào thu chi Tháng 9.
+
+/** Ngày lương trong tháng monthISO (tháng thiếu ngày dồn về cuối tháng) → yyyy-mm-dd */
+export function paydayOfMonth(monthISO: string, payday: number): string {
+  const [y, m] = monthISO.split("-").map(Number);
+  const last = new Date(y, m, 0).getDate();
+  return `${y}-${String(m).padStart(2, "0")}-${String(Math.min(payday, last)).padStart(2, "0")}`;
+}
+
+/** Khoảng ngày của kỳ lương tháng monthISO: [ngày lương tháng này, trước ngày lương tháng sau] */
+export function payCycleRange(
+  monthISO: string,
+  payday: number
+): { start: string; end: string } {
+  const start = paydayOfMonth(monthISO, payday);
+  const [y, m, d] = paydayOfMonth(addMonths(monthISO, 1), payday).split("-").map(Number);
+  const endDate = new Date(y, m - 1, d - 1);
+  return { start, end: monthStartISO(endDate).slice(0, 8) + String(endDate.getDate()).padStart(2, "0") };
+}
+
+/** Tháng (yyyy-mm-01) mà một ngày được tính vào theo kỳ lương */
+export function payCycleMonth(dateISO: string, payday: number): string {
+  const month = dateISO.slice(0, 7) + "-01";
+  return dateISO >= paydayOfMonth(month, payday) ? month : addMonths(month, -1);
+}
+
+/** Số ngày từ hôm nay tới kỳ lương kế tiếp (0 = hôm nay là ngày lương) */
+export function daysUntilPayday(payday: number): number {
+  const thisMonth = monthStartISO();
+  const today = todayISO();
+  const candidate = paydayOfMonth(thisMonth, payday);
+  return daysUntil(today <= candidate ? candidate : paydayOfMonth(addMonths(thisMonth, 1), payday));
+}
+
 /** "2026-08-30" → "30/8/2026" */
 export function formatShortDate(dateISO: string): string {
   const [y, m, d] = dateISO.split("-").map(Number);

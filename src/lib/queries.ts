@@ -1,7 +1,58 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "./supabase";
-import type { Budget, Category, Debt, Transaction } from "./types";
+import type { Budget, Category, Debt, Profile, Transaction } from "./types";
 import { monthEndISO } from "./format";
+
+// ------------------------------------------------------------------- profile
+
+export function useProfile() {
+  return useQuery({
+    queryKey: ["profile"],
+    queryFn: async (): Promise<Profile | null> => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+/** Dòng profile được trigger tạo sẵn khi đăng ký → chỉ update, không upsert. */
+export function useSaveProfile() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: {
+      payday: number | null;
+      monthly_income: number | null;
+    }) => {
+      const { data: userData } = await supabase.auth.getUser();
+      const { error } = await supabase
+        .from("profiles")
+        .update({ payday: p.payday, monthly_income: p.monthly_income })
+        .eq("id", userData.user!.id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["profile"] }),
+  });
+}
+
+/** Bật/tắt xác thực 2 bước qua email (lưu ngay khi gạt công tắc). */
+export function useSetTwoFactor() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (enabled: boolean) => {
+      const { data: userData } = await supabase.auth.getUser();
+      const { error } = await supabase
+        .from("profiles")
+        .update({ two_factor_enabled: enabled })
+        .eq("id", userData.user!.id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["profile"] }),
+  });
+}
 
 // ---------------------------------------------------------------- categories
 
@@ -211,6 +262,31 @@ export function useSaveBudget() {
   });
 }
 
+/** Ghi nhiều dòng ngân sách một lượt cho `month` (lập trước / sao chép tháng). */
+export function useInsertBudgets() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: {
+      month: string;
+      rows: { category_id: string | null; amount: number }[];
+    }) => {
+      if (args.rows.length === 0) return;
+      const { data: userData } = await supabase.auth.getUser();
+      const uid = userData.user?.id;
+      const { error } = await supabase.from("budgets").insert(
+        args.rows.map((r) => ({
+          category_id: r.category_id,
+          amount: r.amount,
+          month: args.month,
+          user_id: uid,
+        }))
+      );
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["budgets"] }),
+  });
+}
+
 // --------------------------------------------------------------------- debts
 
 export function useDebts() {
@@ -284,6 +360,8 @@ export function useSetDebtPaid() {
       paid: boolean;
       logTransaction?: boolean;
       categoryId?: string | null;
+      /** Ngày ghi khoản chi (quy về tháng theo kỳ lương); bỏ trống = hôm nay */
+      occurredOn?: string;
     }) => {
       const { error } = await supabase
         .from("debts")
@@ -302,6 +380,7 @@ export function useSetDebtPaid() {
           note: `Trả nợ: ${args.debt.name}`,
           user_id: userData.user?.id,
           external_id: externalId,
+          ...(args.occurredOn ? { occurred_on: args.occurredOn } : {}),
         });
         if (txError) throw txError;
       }

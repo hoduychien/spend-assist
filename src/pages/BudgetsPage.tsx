@@ -1,12 +1,24 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Pencil, Plus, Trash2, X } from "lucide-react";
-import { useBudgets, useCategories, useSaveBudget, useTransactions } from "../lib/queries";
+import { CalendarClock, Copy, Pencil, Plus, Sparkles, Trash2, X } from "lucide-react";
 import {
+  useBudgets,
+  useCategories,
+  useDebts,
+  useInsertBudgets,
+  useProfile,
+  useSaveBudget,
+  useTransactions,
+} from "../lib/queries";
+import {
+  addMonths,
   formatAmountInput,
   formatMonth,
+  formatShortDate,
   formatVND,
+  monthEndISO,
   monthStartISO,
   parseVND,
+  payCycleRange,
 } from "../lib/format";
 import type { Category } from "../lib/types";
 import { BudgetBar } from "../components/BudgetBar";
@@ -20,36 +32,134 @@ interface SheetTarget {
   amount: number; // 0 = chưa có (thêm mới)
 }
 
+/** Làm tròn lên bội 10.000 ₫ để hạn mức gợi ý gọn số */
+function roundUp10k(amount: number): number {
+  return Math.ceil(amount / 10_000) * 10_000;
+}
+
 export function BudgetsPage() {
   const [month, setMonth] = useState(monthStartISO());
   const { data: categories = [] } = useCategories();
-  const { data: budgets = [] } = useBudgets(month);
+  const { data: budgets = [], isLoading: budgetsLoading } = useBudgets(month);
   const { data: transactions = [] } = useTransactions({ monthISO: month });
   const [sheet, setSheet] = useState<SheetTarget | null>(null);
+
+  const prevMonth = addMonths(month, -1);
+  const { data: prevBudgets = [] } = useBudgets(prevMonth);
+  const { data: prevTransactions = [] } = useTransactions({ monthISO: prevMonth });
+  const { data: debts = [] } = useDebts();
+  const { data: profile } = useProfile();
+  const insertBudgets = useInsertBudgets();
+
+  const isFuture = month > monthStartISO();
+
+  const payday = profile?.payday ?? null;
+  // Cửa sổ dư nợ của tháng đang xem: theo kỳ lương nếu đã đặt ngày lương,
+  // chưa đặt thì theo tháng dương lịch.
+  const debtWindow = useMemo(
+    () =>
+      payday
+        ? payCycleRange(month, payday)
+        : { start: month, end: monthEndISO(month) },
+    [month, payday]
+  );
+  const debtCategoryId = categories.find((c) => c.name === "Dư nợ")?.id ?? null;
+
+  // Dư nợ thuộc kỳ này ĐÃ THANH TOÁN nhưng chưa ghi thành khoản chi
+  // (giao dịch đã ghi mang external_id "debt:<id>" nên không đếm trùng)
+  // → vẫn tính vào chi tiêu của mục Dư nợ tháng này.
+  const paidUnloggedSum = useMemo(
+    () =>
+      debts
+        .filter(
+          (d) =>
+            d.paid_at &&
+            d.due_date >= debtWindow.start &&
+            d.due_date <= debtWindow.end &&
+            !transactions.some((t) => t.external_id === `debt:${d.id}`)
+        )
+        .reduce((s, d) => s + d.amount, 0),
+    [debts, debtWindow, transactions]
+  );
 
   const spentByCategory = useMemo(() => {
     const map = new Map<string, number>();
     for (const t of transactions) {
       if (t.category_id) map.set(t.category_id, (map.get(t.category_id) ?? 0) + t.amount);
     }
+    if (debtCategoryId && paidUnloggedSum > 0) {
+      map.set(debtCategoryId, (map.get(debtCategoryId) ?? 0) + paidUnloggedSum);
+    }
     return map;
-  }, [transactions]);
+  }, [transactions, debtCategoryId, paidUnloggedSum]);
 
   const budgetByCategory = new Map(
     budgets.filter((b) => b.category_id).map((b) => [b.category_id!, b.amount])
   );
   const totalBudget = budgets.find((b) => b.category_id === null)?.amount ?? 0;
-  const totalSpent = transactions.reduce((s, t) => s + t.amount, 0);
+  const totalSpent =
+    transactions.reduce((s, t) => s + t.amount, 0) + paidUnloggedSum;
 
   const withBudget = categories.filter((c) => budgetByCategory.has(c.id));
   const withoutBudget = categories.filter((c) => !budgetByCategory.has(c.id));
+
+  // --- Lập trước ngân sách: sao chép tháng trước / gợi ý theo chi tiêu thực tế ---
+  const categoryIds = useMemo(() => new Set(categories.map((c) => c.id)), [categories]);
+
+  const copyRows = useMemo(
+    () =>
+      prevBudgets
+        .filter((b) => b.category_id === null || categoryIds.has(b.category_id))
+        .map((b) => ({ category_id: b.category_id, amount: b.amount })),
+    [prevBudgets, categoryIds]
+  );
+
+  // Dư nợ chưa trả tính vào tháng đang lập — khoản chi gần như chắc chắn
+  const debtsDue = useMemo(
+    () =>
+      debts.filter(
+        (d) =>
+          !d.paid_at && d.due_date >= debtWindow.start && d.due_date <= debtWindow.end
+      ),
+    [debts, debtWindow]
+  );
+  const debtsDueSum = debtsDue.reduce((s, d) => s + d.amount, 0);
+
+  const suggestRows = useMemo(() => {
+    const spent = new Map<string, number>();
+    let total = 0;
+    for (const t of prevTransactions) {
+      total += t.amount;
+      if (t.category_id && categoryIds.has(t.category_id)) {
+        spent.set(t.category_id, (spent.get(t.category_id) ?? 0) + t.amount);
+      }
+    }
+    // Danh mục Dư nợ: tối thiểu bằng tổng dư nợ đến hạn trong tháng đang lập
+    if (debtCategoryId && debtsDueSum > 0) {
+      const prevDebtSpent = spent.get(debtCategoryId) ?? 0;
+      if (debtsDueSum > prevDebtSpent) {
+        total += debtsDueSum - prevDebtSpent;
+        spent.set(debtCategoryId, debtsDueSum);
+      }
+    }
+    const rows: { category_id: string | null; amount: number }[] = [...spent].map(
+      ([category_id, sum]) => ({ category_id, amount: roundUp10k(sum) })
+    );
+    if (total > 0) rows.push({ category_id: null, amount: roundUp10k(total) });
+    return rows;
+  }, [prevTransactions, categoryIds, debtCategoryId, debtsDueSum]);
+
+  const showPlanner =
+    !budgetsLoading &&
+    budgets.length === 0 &&
+    (copyRows.length > 0 || suggestRows.length > 0);
 
   return (
     <>
       <header className="page-head flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">Ngân sách</h1>
         <div className="flex items-center gap-2">
-          <MonthSwitcher month={month} onChange={setMonth} />
+          <MonthSwitcher month={month} onChange={setMonth} allowFuture />
           {(withoutBudget.length > 0 || totalBudget === 0) && (
             <button
               onClick={() =>
@@ -63,6 +173,67 @@ export function BudgetsPage() {
           )}
         </div>
       </header>
+
+      {isFuture && (
+        <p className="mb-5 flex items-start gap-2 rounded-xl bg-accent-soft px-3.5 py-2.5 text-sm text-accent-deep">
+          <CalendarClock size={16} aria-hidden className="mt-0.5 shrink-0" />
+          <span>
+            Bạn đang lập trước ngân sách cho {formatMonth(month)}. Chi tiêu sẽ được
+            theo dõi khi tháng bắt đầu.
+          </span>
+        </p>
+      )}
+
+      {showPlanner && (
+        <section
+          aria-label="Lập nhanh ngân sách"
+          className="mb-7 rounded-xl border border-rule bg-paper-2 p-4"
+        >
+          <h2 className="mb-1 text-sm font-semibold">
+            {formatMonth(month)} chưa có ngân sách
+          </h2>
+          <p className="mb-3 text-sm text-ink-2">
+            Lập nhanh từ dữ liệu {formatMonth(prevMonth)}, sau đó chỉnh từng mục nếu cần.
+          </p>
+          {debtsDueSum > 0 && (
+            <p className="mb-3 text-sm text-ink-2">
+              Có {debtsDue.length} khoản dư nợ tính vào {formatMonth(month)}
+              {payday
+                ? ` (kỳ lương ${formatShortDate(debtWindow.start)} – ${formatShortDate(debtWindow.end)}, tổng `
+                : " (tổng "}
+              <span className="tnum font-medium text-ink">{formatVND(debtsDueSum)}</span>)
+              — đã được tính vào gợi ý.
+            </p>
+          )}
+          <div className="flex flex-wrap gap-2">
+            {copyRows.length > 0 && (
+              <button
+                onClick={() => insertBudgets.mutate({ month, rows: copyRows })}
+                disabled={insertBudgets.isPending}
+                className="flex items-center gap-1.5 whitespace-nowrap rounded-xl bg-accent-deep px-4 py-2.5 text-sm font-medium text-paper transition-colors duration-150 hover:bg-accent disabled:opacity-60"
+              >
+                <Copy size={15} aria-hidden />
+                Sao chép ngân sách {formatMonth(prevMonth)}
+              </button>
+            )}
+            {suggestRows.length > 0 && (
+              <button
+                onClick={() => insertBudgets.mutate({ month, rows: suggestRows })}
+                disabled={insertBudgets.isPending}
+                className="flex items-center gap-1.5 whitespace-nowrap rounded-xl border border-rule px-4 py-2.5 text-sm text-ink-2 transition-colors duration-150 hover:bg-paper disabled:opacity-60"
+              >
+                <Sparkles size={15} aria-hidden />
+                Gợi ý theo chi tiêu {formatMonth(prevMonth)}
+              </button>
+            )}
+          </div>
+          {insertBudgets.isError && (
+            <p role="alert" className="mt-3 rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">
+              Không lưu được. Kiểm tra kết nối rồi thử lại.
+            </p>
+          )}
+        </section>
+      )}
 
       {/* Ngân sách cả tháng */}
       <section className="mb-7 border-b border-rule pb-5">

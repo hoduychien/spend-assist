@@ -4,15 +4,19 @@ import {
   useCategories,
   useDebts,
   useDeleteDebt,
+  useProfile,
   useSaveDebt,
   useSetDebtPaid,
 } from "../lib/queries";
 import {
   daysUntil,
   formatAmountInput,
+  formatMonth,
   formatShortDate,
   formatVND,
+  monthEndISO,
   parseVND,
+  payCycleMonth,
   todayISO,
 } from "../lib/format";
 import type { Debt } from "../lib/types";
@@ -37,6 +41,8 @@ export function dueLabel(debt: Debt): string {
 
 export function DebtsPage() {
   const { data: debts = [], isLoading } = useDebts();
+  const { data: profile } = useProfile();
+  const payday = profile?.payday ?? null;
   const del = useDeleteDebt();
   const [sheet, setSheet] = useState<{ open: boolean; editing: Debt | null }>({
     open: false,
@@ -115,6 +121,9 @@ export function DebtsPage() {
                       }}
                     >
                       {dueLabel(d)}
+                      {payday
+                        ? ` · tính vào ${formatMonth(payCycleMonth(d.due_date, payday))}`
+                        : ""}
                       {d.note ? ` · ${d.note}` : ""}
                     </p>
                   </div>
@@ -165,7 +174,11 @@ export function DebtsPage() {
 
       <p className="mt-8 max-w-prose text-xs leading-relaxed text-muted">
         Khoản quá hạn hiện đỏ, còn 7 ngày trở xuống hiện vàng. Khi đánh dấu "Đã trả"
-        bạn có thể ghi luôn thành một khoản chi hôm nay để tính vào ngân sách.
+        bạn có thể ghi luôn thành một khoản chi để tính vào ngân sách
+        {payday
+          ? " — khoản chi được quy về tháng theo kỳ lương (đặt trong Cài đặt)"
+          : ""}
+        .
       </p>
 
       {sheet.open && (
@@ -209,11 +222,24 @@ function PayDialog({ debt, onClose }: { debt: Debt; onClose: () => void }) {
   const ref = useRef<HTMLDialogElement>(null);
   const setPaid = useSetDebtPaid();
   const { data: categories = [] } = useCategories();
+  const { data: profile } = useProfile();
+  const payday = profile?.payday ?? null;
   // Ưu tiên danh mục "Dư nợ" (migration 0004); chưa có thì rơi về "Khác"
   const debtCat =
     categories.find((c) => c.name === "Dư nợ") ??
     categories.find((c) => c.name === "Khác");
   const debtCatId = debtCat?.id ?? null;
+
+  // Có ngày lương: khoản chi ghi vào tháng của kỳ lương chứa ngày tới hạn —
+  // hôm nay nếu đang trong tháng đó, ngoài ra kẹp về đầu/cuối tháng đó.
+  // Chưa đặt ngày lương: ghi hôm nay như cũ.
+  const cycleMonth = payday ? payCycleMonth(debt.due_date, payday) : null;
+  let occurredOn: string | undefined;
+  if (cycleMonth) {
+    const today = todayISO();
+    const end = monthEndISO(cycleMonth);
+    occurredOn = today < cycleMonth ? cycleMonth : today > end ? end : today;
+  }
 
   useEffect(() => {
     ref.current?.showModal();
@@ -225,6 +251,7 @@ function PayDialog({ debt, onClose }: { debt: Debt; onClose: () => void }) {
       paid: true,
       logTransaction,
       categoryId: debtCatId,
+      occurredOn,
     });
     onClose();
   }
@@ -240,8 +267,9 @@ function PayDialog({ debt, onClose }: { debt: Debt; onClose: () => void }) {
     >
       <h2 className="mb-1 text-lg font-semibold">Đã trả "{debt.name}"</h2>
       <p className="tnum mb-4 text-sm text-ink-2">
-        {formatVND(debt.amount)} — có ghi thành khoản chi hôm nay không? Khoản chi sẽ
-        vào danh mục "{debtCat?.name ?? "Dư nợ"}" và tính vào ngân sách tháng này.
+        {formatVND(debt.amount)} — có ghi thành khoản chi không? Khoản chi sẽ vào
+        danh mục "{debtCat?.name ?? "Dư nợ"}" và tính vào ngân sách{" "}
+        {cycleMonth ? formatMonth(cycleMonth).toLowerCase() : "tháng này"}.
       </p>
       <div className="flex flex-col gap-2">
         <button

@@ -12,6 +12,7 @@ import { dueLabel, dueStatus } from "./DebtsPage";
 import { formatMonth, formatVND, monthStartISO } from "../lib/format";
 import { BudgetBar, budgetStatus } from "../components/BudgetBar";
 import { CategoryChart } from "../components/CategoryChart";
+import { CumulativeSpendChart, DailySpendChart } from "../components/SpendCharts";
 import { CategoryIcon } from "../components/CategoryIcon";
 import { TransactionSheet } from "../components/TransactionSheet";
 
@@ -108,6 +109,7 @@ export function DashboardPage() {
             để biết mình còn tiêu được bao nhiêu.
           </p>
         )}
+
       </section>
 
       {/* Cảnh báo ngân sách + dư nợ */}
@@ -176,13 +178,26 @@ export function DashboardPage() {
         </section>
       )}
 
-      {/* Chi theo danh mục */}
-      <section aria-labelledby="theo-danh-muc" className="mb-8">
-        <h2 id="theo-danh-muc" className="mb-3 text-base font-semibold">
-          Chi theo danh mục
+      {/* Biểu đồ: chi theo ngày + chi theo danh mục, ngang hàng trên desktop */}
+      <section aria-labelledby="bieu-do" className="mb-8">
+        <h2 id="bieu-do" className="sr-only">
+          Biểu đồ chi tiêu
         </h2>
         {slices.length > 0 ? (
-          <CategoryChart slices={slices} />
+          <div className="grid gap-8 lg:grid-cols-2 lg:gap-10">
+            <div>
+              <h3 className="mb-3 text-base font-semibold">Chi theo ngày trong tháng</h3>
+              <DailySpendChart transactions={transactions} month={month} />
+            </div>
+            <div>
+              <h3 className="mb-3 text-base font-semibold">Lũy kế trong tháng</h3>
+              <CumulativeSpendChart
+                transactions={transactions}
+                month={month}
+                budget={totalBudget}
+              />
+            </div>
+          </div>
         ) : isLoading ? (
           <p className="text-sm text-muted">Đang tải…</p>
         ) : (
@@ -212,22 +227,29 @@ export function DashboardPage() {
         )}
       </section>
 
-      {/* 5 giao dịch gần nhất */}
-      {recent.length > 0 && (
-        <section aria-labelledby="gan-nhat">
-          <div className="mb-3 flex items-baseline justify-between">
-            <h2 id="gan-nhat" className="text-base font-semibold">
-              Giao dịch gần nhất
-            </h2>
-            <Link
-              to="/giao-dich"
-              className="whitespace-nowrap text-sm text-accent-deep underline-offset-2 hover:underline"
-            >
-              Xem tất cả
-            </Link>
-          </div>
-          <ul className="divide-y divide-rule-2">
-            {recent.map((t) => {
+      {/* Chi theo danh mục ngang hàng với giao dịch gần nhất */}
+      {(slices.length > 0 || recent.length > 0) && (
+        <section aria-label="Danh mục và giao dịch gần nhất">
+          <div className="grid gap-8 lg:grid-cols-2 lg:gap-10">
+            {slices.length > 0 && (
+              <div>
+                <h2 className="mb-3 text-base font-semibold">Chi theo danh mục</h2>
+                <CategoryChart slices={slices} />
+              </div>
+            )}
+            {recent.length > 0 && (
+              <div>
+                <div className="mb-3 flex items-baseline justify-between">
+                  <h2 className="text-base font-semibold">Giao dịch gần nhất</h2>
+                  <Link
+                    to="/giao-dich"
+                    className="whitespace-nowrap text-sm text-accent-deep underline-offset-2 hover:underline"
+                  >
+                    Xem tất cả
+                  </Link>
+                </div>
+                <ul className="divide-y divide-rule-2">
+                  {recent.map((t) => {
               const cat = t.category_id ? catById.get(t.category_id) : undefined;
               return (
                 <li key={t.id} className="flex items-center gap-3 py-2.5">
@@ -248,7 +270,10 @@ export function DashboardPage() {
                 </li>
               );
             })}
-          </ul>
+                </ul>
+              </div>
+            )}
+          </div>
         </section>
       )}
 

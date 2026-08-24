@@ -13,8 +13,13 @@ export function AuthPage() {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // Xác thực 2 bước: sau khi mật khẩu đúng, nhập mã 6 số gửi qua email
+  const [step, setStep] = useState<"credentials" | "otp">("credentials");
+  const [otp, setOtp] = useState("");
+  // Chặn điều hướng trong lúc phiên tạm (mật khẩu đúng nhưng chưa qua bước 2)
+  const [gate, setGate] = useState(false);
 
-  if (session) return <Navigate to="/" replace />;
+  if (session && !gate) return <Navigate to="/" replace />;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -23,8 +28,25 @@ export function AuthPage() {
     setPending(true);
     try {
       if (mode === "login") {
+        setGate(true);
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
+        // Mật khẩu đúng → xem tài khoản có bật xác thực 2 bước không
+        const { data: prof } = await supabase
+          .from("profiles")
+          .select("two_factor_enabled")
+          .maybeSingle();
+        if (prof?.two_factor_enabled) {
+          // Hủy phiên tạm, gửi mã OTP qua email — chỉ verify đúng mã mới có phiên
+          await supabase.auth.signOut();
+          const { error: otpError } = await supabase.auth.signInWithOtp({
+            email,
+            options: { shouldCreateUser: false },
+          });
+          if (otpError) throw otpError;
+          setStep("otp");
+          setNotice(`Đã gửi mã 6 số tới ${email}. Nhập mã để hoàn tất đăng nhập.`);
+        }
       } else {
         const { data, error } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
@@ -43,7 +65,122 @@ export function AuthPage() {
       );
     } finally {
       setPending(false);
+      setGate(false);
     }
+  }
+
+  async function verifyCode(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setPending(true);
+    try {
+      const { error } = await supabase.auth.verifyOtp({
+        email,
+        token: otp.trim(),
+        type: "email",
+      });
+      if (error) throw error;
+      // Phiên được tạo → <Navigate> phía trên tự chuyển vào app
+    } catch {
+      setError("Mã chưa đúng hoặc đã hết hạn. Kiểm tra lại hoặc gửi lại mã.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function resendCode() {
+    setError(null);
+    setNotice(null);
+    setPending(true);
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: { shouldCreateUser: false },
+      });
+      if (error) throw error;
+      setNotice("Đã gửi lại mã. Kiểm tra hộp thư (kể cả mục spam).");
+    } catch {
+      setError("Chưa gửi lại được mã. Đợi một lát rồi thử lại.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  // ---- Bước 2: nhập mã OTP từ email ----
+  if (step === "otp") {
+    return (
+      <main className="mx-auto flex min-h-dvh w-full max-w-sm flex-col justify-center px-5 py-10">
+        <header className="mb-8">
+          <p className="flex items-baseline gap-1.5 font-display text-2xl font-semibold">
+            Spend Assist
+            <span aria-hidden className="h-2 w-2 rounded-full bg-accent" />
+          </p>
+          <h1 className="mt-4 text-lg font-semibold">Xác thực 2 bước</h1>
+          <p className="mt-1 text-sm leading-relaxed text-ink-2">
+            Nhập mã 6 số vừa được gửi tới <span className="font-medium">{email}</span>.
+          </p>
+        </header>
+
+        <form onSubmit={verifyCode} className="flex flex-col gap-3">
+          <label>
+            <span className="mb-1 block text-sm text-ink-2">Mã xác thực</span>
+            <input
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              autoFocus
+              required
+              minLength={6}
+              maxLength={6}
+              pattern="[0-9]{6}"
+              value={otp}
+              onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+              placeholder="••••••"
+              className="tnum w-full rounded-xl border border-rule bg-paper-2 px-3 py-2.5 text-center text-2xl font-semibold tracking-[0.4em] focus-ring outline-none placeholder:text-muted"
+            />
+          </label>
+
+          {error && (
+            <p role="alert" className="rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">
+              {error}
+            </p>
+          )}
+          {notice && (
+            <p role="status" className="rounded-lg bg-accent-soft px-3 py-2 text-sm text-accent-deep">
+              {notice}
+            </p>
+          )}
+
+          <button
+            type="submit"
+            disabled={pending || otp.length < 6}
+            className="mt-1 whitespace-nowrap rounded-xl bg-accent-deep py-3 font-medium text-paper transition-colors duration-150 hover:bg-accent disabled:opacity-60"
+          >
+            {pending ? "Đang kiểm tra…" : "Xác nhận"}
+          </button>
+        </form>
+
+        <div className="mt-5 flex items-center justify-between text-sm">
+          <button
+            onClick={() => {
+              setStep("credentials");
+              setOtp("");
+              setError(null);
+              setNotice(null);
+            }}
+            className="text-muted transition-colors duration-150 hover:text-ink"
+          >
+            ← Quay lại đăng nhập
+          </button>
+          <button
+            onClick={resendCode}
+            disabled={pending}
+            className="text-accent-deep transition-colors duration-150 hover:text-accent disabled:opacity-60"
+          >
+            Gửi lại mã
+          </button>
+        </div>
+      </main>
+    );
   }
 
   return (

@@ -1,3 +1,11 @@
+export interface Profile {
+  id: string;
+  full_name: string | null;
+  payday: number | null; // ngày nhận lương hàng tháng (1-31)
+  monthly_income: number | null; // đồng
+  two_factor_enabled: boolean; // bật xác thực 2 bước qua email khi đăng nhập
+}
+
 export interface Category {
   id: string;
   user_id: string;

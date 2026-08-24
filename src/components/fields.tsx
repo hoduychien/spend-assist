@@ -1,9 +1,44 @@
-import Select from "react-select";
+import Select, { components, type DropdownIndicatorProps } from "react-select";
+import { ChevronDown } from "lucide-react";
 import DatePicker, { registerLocale } from "react-datepicker";
 import { vi } from "date-fns/locale";
 import "react-datepicker/dist/react-datepicker.css";
+import { formatAmountInput, parseVND } from "../lib/format";
 
 registerLocale("vi", vi);
+
+// ------------------------------------------------------------ AppAmountInput
+
+/**
+ * Ô nhập số tiền VND dùng chung — nhóm nghìn bằng dấu chấm, ký hiệu ₫ bên phải.
+ * Giá trị vào/ra là chuỗi đã format (dùng parseVND để lấy số đồng).
+ */
+export function AppAmountInput({
+  value,
+  onChange,
+  autoFocus,
+  ariaLabel,
+}: {
+  value: string;
+  onChange: (text: string) => void;
+  autoFocus?: boolean;
+  ariaLabel?: string;
+}) {
+  return (
+    <div className="focus-ring flex items-center rounded-xl border border-rule bg-paper-2">
+      <input
+        inputMode="numeric"
+        autoFocus={autoFocus}
+        aria-label={ariaLabel}
+        value={value}
+        onChange={(e) => onChange(formatAmountInput(parseVND(e.target.value)))}
+        placeholder="0"
+        className="tnum w-full bg-transparent px-3 py-2.5 text-right text-xl font-semibold outline-none placeholder:text-muted"
+      />
+      <span className="pr-3 text-muted">₫</span>
+    </div>
+  );
+}
 
 // ---------------------------------------------------------------- AppSelect
 
@@ -11,6 +46,24 @@ export interface SelectOption {
   value: string;
   label: string;
   color?: string; // chấm màu danh mục (nếu có)
+}
+
+/** Mũi tên lucide nét mảnh thay cho SVG mặc định của react-select —
+ *  xoay mượt khi mở menu, đổi màu nhấn theo trạng thái. */
+function DropdownIndicator(props: DropdownIndicatorProps<SelectOption, false>) {
+  const open = props.selectProps.menuIsOpen;
+  return (
+    <components.DropdownIndicator {...props}>
+      <ChevronDown
+        size={16}
+        strokeWidth={1.5}
+        aria-hidden
+        className={`transition-all duration-200 ease-out ${
+          open ? "-rotate-180 text-accent-deep" : "text-muted"
+        }`}
+      />
+    </components.DropdownIndicator>
+  );
 }
 
 /**
@@ -47,6 +100,7 @@ export function AppSelect({
       autoFocus={autoFocus}
       menuPlacement="auto"
       menuShouldScrollIntoView={false}
+      components={{ DropdownIndicator, IndicatorSeparator: null }}
       formatOptionLabel={(o) => (
         <span className="flex items-center gap-2">
           {o.color && (
@@ -73,10 +127,7 @@ export function AppSelect({
         valueContainer: () => "gap-2",
         singleValue: () => "text-ink",
         placeholder: () => "text-muted",
-        dropdownIndicator: ({ selectProps }) =>
-          `pl-2 text-muted transition-transform duration-150 ${
-            selectProps.menuIsOpen ? "rotate-180" : ""
-          }`,
+        dropdownIndicator: () => "pl-2",
         menu: () =>
           "z-50 mt-1.5 overflow-hidden rounded-xl border border-rule bg-paper py-1 shadow-lg",
         menuList: () => "max-h-60",

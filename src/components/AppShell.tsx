@@ -5,17 +5,28 @@ import {
   PiggyBank,
   HandCoins,
   Tags,
+  Settings,
   LogOut,
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 
-const TABS = [
+const TABS: {
+  to: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  end: boolean;
+  mobileHidden?: boolean;
+}[] = [
   { to: "/", label: "Tổng quan", icon: LayoutDashboard, end: true },
   { to: "/giao-dich", label: "Giao dịch", icon: List, end: false },
   { to: "/ngan-sach", label: "Ngân sách", icon: PiggyBank, end: false },
   { to: "/du-no", label: "Dư nợ", icon: HandCoins, end: false },
-  { to: "/danh-muc", label: "Danh mục", icon: Tags, end: false },
+  // mobileHidden: mobile chỉ còn 5 ô cho đỡ chật — Danh mục đi vào từ Cài đặt
+  { to: "/danh-muc", label: "Danh mục", icon: Tags, end: false, mobileHidden: true },
+  { to: "/cai-dat", label: "Cài đặt", icon: Settings, end: false },
 ];
+
+const MOBILE_TABS = TABS.filter((t) => !t.mobileHidden);
 
 /**
  * Khung app: thanh bên trái trên desktop, thanh tab dưới đáy trên mobile.
@@ -67,7 +78,7 @@ export function AppShell() {
         className="fixed inset-x-0 bottom-0 z-40 border-t border-rule bg-paper pb-[env(safe-area-inset-bottom)] lg:hidden"
       >
         <ul className="grid grid-cols-5">
-          {TABS.map(({ to, label, icon: Icon, end }) => (
+          {MOBILE_TABS.map(({ to, label, icon: Icon, end }) => (
             <li key={to}>
               <NavLink
                 to={to}
