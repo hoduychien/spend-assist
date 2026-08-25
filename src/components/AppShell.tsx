@@ -9,6 +9,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
+import { Logo } from "./Logo";
 
 const TABS: {
   to: string;
@@ -37,9 +38,9 @@ export function AppShell() {
     <div className="min-h-dvh lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]">
       {/* Side rail — desktop */}
       <aside className="hidden border-r border-rule lg:sticky lg:top-0 lg:flex lg:h-dvh lg:flex-col lg:gap-1 lg:overflow-y-auto lg:p-6">
-        <div className="mb-6 flex items-baseline gap-1.5">
+        <div className="mb-6 flex items-center gap-2.5">
+          <Logo size={28} />
           <span className="font-display text-xl font-semibold">Spend Assist</span>
-          <span aria-hidden className="h-2 w-2 rounded-full bg-accent" />
         </div>
         {TABS.map(({ to, label, icon: Icon, end }) => (
           <NavLink

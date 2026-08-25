@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Navigate } from "react-router-dom";
 import { supabase, supabaseConfigured } from "../lib/supabase";
 import { useAuth } from "../lib/auth";
+import { Logo } from "../components/Logo";
 
 type Mode = "login" | "signup";
 
@@ -111,9 +112,9 @@ export function AuthPage() {
     return (
       <main className="mx-auto flex min-h-dvh w-full max-w-sm flex-col justify-center px-5 py-10">
         <header className="mb-8">
-          <p className="flex items-baseline gap-1.5 font-display text-2xl font-semibold">
+          <p className="flex items-center gap-2.5 font-display text-2xl font-semibold">
+            <Logo size={34} />
             Spend Assist
-            <span aria-hidden className="h-2 w-2 rounded-full bg-accent" />
           </p>
           <h1 className="mt-4 text-lg font-semibold">Xác thực 2 bước</h1>
           <p className="mt-1 text-sm leading-relaxed text-ink-2">
@@ -187,9 +188,9 @@ export function AuthPage() {
     <main className="mx-auto flex min-h-dvh w-full max-w-sm flex-col justify-center px-5 py-10">
       {/* Nhãn hiệu — wordmark + dấu chấm accent, không hero marketing */}
       <header className="mb-8">
-        <p className="flex items-baseline gap-1.5 font-display text-2xl font-semibold">
+        <p className="flex items-center gap-2.5 font-display text-2xl font-semibold">
+          <Logo size={34} />
           Spend Assist
-          <span aria-hidden className="h-2 w-2 rounded-full bg-accent" />
         </p>
         <p className="mt-2 text-sm leading-relaxed text-ink-2">
           Cuốn sổ chi tiêu của bạn — ghi lại từng khoản, biết mình còn bao nhiêu
