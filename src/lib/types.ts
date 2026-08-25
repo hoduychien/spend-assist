@@ -39,6 +39,17 @@ export interface Debt {
 }
 
 
+export interface RecurringItem {
+  id: string;
+  user_id: string;
+  name: string;
+  amount: number;
+  category_id: string | null;
+  due_day: number; // ngày đến hạn hàng tháng (1-31)
+  end_date: string | null; // yyyy-mm-dd — kỳ thanh toán cuối cùng; null = vô thời hạn
+  note: string | null;
+}
+
 export interface Budget {
   id: string;
   user_id: string;

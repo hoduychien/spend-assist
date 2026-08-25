@@ -6,6 +6,7 @@ import {
   useDebts,
   useInsertBudgets,
   useProfile,
+  useRecurringItems,
   useSaveBudget,
   useTransactions,
 } from "../lib/queries";
@@ -48,6 +49,7 @@ export function BudgetsPage() {
   const { data: prevBudgets = [] } = useBudgets(prevMonth);
   const { data: prevTransactions = [] } = useTransactions({ monthISO: prevMonth });
   const { data: debts = [] } = useDebts();
+  const { data: allRecurring = [] } = useRecurringItems();
   const { data: profile } = useProfile();
   const insertBudgets = useInsertBudgets();
 
@@ -64,6 +66,15 @@ export function BudgetsPage() {
     [month, payday]
   );
   const debtCategoryId = categories.find((c) => c.name === "Dư nợ")?.id ?? null;
+
+  // Khoản cố định còn hiệu lực trong tháng đang xem (bỏ khoản đã hết thời hạn)
+  const recurring = useMemo(
+    () =>
+      allRecurring.filter(
+        (r) => !r.end_date || month.slice(0, 7) <= r.end_date.slice(0, 7)
+      ),
+    [allRecurring, month]
+  );
 
   // Dư nợ thuộc kỳ này ĐÃ THANH TOÁN nhưng chưa ghi thành khoản chi
   // (giao dịch đã ghi mang external_id "debt:<id>" nên không đếm trùng)
@@ -134,6 +145,23 @@ export function BudgetsPage() {
         spent.set(t.category_id, (spent.get(t.category_id) ?? 0) + t.amount);
       }
     }
+    // Khoản cố định hàng tháng: hạn mức danh mục tối thiểu bằng tổng cố định
+    const recurringByCat = new Map<string, number>();
+    for (const r of recurring) {
+      if (r.category_id && categoryIds.has(r.category_id)) {
+        recurringByCat.set(
+          r.category_id,
+          (recurringByCat.get(r.category_id) ?? 0) + r.amount
+        );
+      }
+    }
+    for (const [catId, sum] of recurringByCat) {
+      const cur = spent.get(catId) ?? 0;
+      if (sum > cur) {
+        total += sum - cur;
+        spent.set(catId, sum);
+      }
+    }
     // Danh mục Dư nợ: tối thiểu bằng tổng dư nợ đến hạn trong tháng đang lập
     if (debtCategoryId && debtsDueSum > 0) {
       const prevDebtSpent = spent.get(debtCategoryId) ?? 0;
@@ -147,7 +175,9 @@ export function BudgetsPage() {
     );
     if (total > 0) rows.push({ category_id: null, amount: roundUp10k(total) });
     return rows;
-  }, [prevTransactions, categoryIds, debtCategoryId, debtsDueSum]);
+  }, [prevTransactions, categoryIds, recurring, debtCategoryId, debtsDueSum]);
+
+  const recurringSum = recurring.reduce((s, r) => s + r.amount, 0);
 
   const showPlanner =
     !budgetsLoading &&
@@ -195,6 +225,13 @@ export function BudgetsPage() {
           <p className="mb-3 text-sm text-ink-2">
             Lập nhanh từ dữ liệu {formatMonth(prevMonth)}, sau đó chỉnh từng mục nếu cần.
           </p>
+          {recurringSum > 0 && (
+            <p className="mb-3 text-sm text-ink-2">
+              Có {recurring.length} khoản cố định hàng tháng (tổng{" "}
+              <span className="tnum font-medium text-ink">{formatVND(recurringSum)}</span>)
+              — đã được tính vào gợi ý.
+            </p>
+          )}
           {debtsDueSum > 0 && (
             <p className="mb-3 text-sm text-ink-2">
               Có {debtsDue.length} khoản dư nợ tính vào {formatMonth(month)}

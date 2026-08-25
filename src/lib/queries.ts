@@ -1,7 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "./supabase";
-import type { Budget, Category, Debt, Profile, Transaction } from "./types";
+import type {
+  Budget,
+  Category,
+  Debt,
+  Profile,
+  RecurringItem,
+  Transaction,
+} from "./types";
 import { monthEndISO } from "./format";
+import { toast } from "./toast";
 
 // ------------------------------------------------------------------- profile
 
@@ -34,7 +42,10 @@ export function useSaveProfile() {
         .eq("id", userData.user!.id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["profile"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["profile"] });
+      toast.success("Đã lưu cài đặt.");
+    },
   });
 }
 
@@ -50,7 +61,11 @@ export function useSetTwoFactor() {
         .eq("id", userData.user!.id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["profile"] }),
+    onSuccess: (_data, enabled) => {
+      qc.invalidateQueries({ queryKey: ["profile"] });
+      toast.success(enabled ? "Đã bật xác thực 2 bước." : "Đã tắt xác thực 2 bước.");
+    },
+    onError: () => toast.error("Không lưu được cài đặt bảo mật."),
   });
 }
 
@@ -96,7 +111,10 @@ export function useSaveCategory() {
         if (error) throw error;
       }
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["categories"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["categories"] });
+      toast.success("Đã lưu danh mục.");
+    },
   });
 }
 
@@ -111,7 +129,9 @@ export function useDeleteCategory() {
       qc.invalidateQueries({ queryKey: ["categories"] });
       qc.invalidateQueries({ queryKey: ["transactions"] });
       qc.invalidateQueries({ queryKey: ["budgets"] });
+      toast.success("Đã xóa danh mục.");
     },
+    onError: () => toast.error("Không xóa được danh mục."),
   });
 }
 
@@ -178,7 +198,10 @@ export function useSaveTransaction() {
         if (error) throw error;
       }
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["transactions"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["transactions"] });
+      toast.success("Đã lưu khoản chi.");
+    },
   });
 }
 
@@ -205,8 +228,10 @@ export function useDeleteTransaction() {
       }
       return { snapshots };
     },
+    // Không toast ở đây — TransactionsPage hiện toast kèm nút Hoàn tác
     onError: (_err, _id, ctx) => {
       ctx?.snapshots.forEach(([key, list]) => qc.setQueryData(key, list));
+      toast.error("Không xóa được khoản chi.");
     },
     onSettled: () => qc.invalidateQueries({ queryKey: ["transactions"] }),
   });
@@ -258,7 +283,10 @@ export function useSaveBudget() {
         if (error) throw error;
       }
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["budgets"] }),
+    onSuccess: (_data, b) => {
+      qc.invalidateQueries({ queryKey: ["budgets"] });
+      toast.success(b.amount > 0 ? "Đã lưu ngân sách." : "Đã bỏ hạn mức.");
+    },
   });
 }
 
@@ -283,7 +311,11 @@ export function useInsertBudgets() {
       );
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["budgets"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["budgets"] });
+      toast.success("Đã tạo ngân sách cho tháng.");
+    },
+    onError: () => toast.error("Không tạo được ngân sách."),
   });
 }
 
@@ -336,7 +368,10 @@ export function useSaveDebt() {
         if (error) throw error;
       }
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["debts"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["debts"] });
+      toast.success("Đã lưu khoản nợ.");
+    },
   });
 }
 
@@ -347,7 +382,11 @@ export function useDeleteDebt() {
       const { error } = await supabase.from("debts").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["debts"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["debts"] });
+      toast.success("Đã xóa khoản nợ.");
+    },
+    onError: () => toast.error("Không xóa được khoản nợ."),
   });
 }
 
@@ -392,10 +431,137 @@ export function useSetDebtPaid() {
         if (delError) throw delError;
       }
     },
-    onSuccess: () => {
+    onSuccess: (_data, args) => {
       qc.invalidateQueries({ queryKey: ["debts"] });
       qc.invalidateQueries({ queryKey: ["transactions"] });
+      toast.success(
+        args.paid ? `Đã trả "${args.debt.name}".` : "Đã hoàn tác — chuyển về chưa trả."
+      );
     },
+    onError: () => toast.error("Không cập nhật được khoản nợ."),
+  });
+}
+
+// --------------------------------------------------- khoản cố định hàng tháng
+
+export function useRecurringItems() {
+  return useQuery({
+    queryKey: ["recurring"],
+    queryFn: async (): Promise<RecurringItem[]> => {
+      const { data, error } = await supabase
+        .from("recurring_items")
+        .select("*")
+        .order("due_day");
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useSaveRecurringItem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (r: {
+      id?: string;
+      name: string;
+      amount: number;
+      category_id: string | null;
+      due_day: number;
+      end_date: string | null;
+      note: string;
+    }) => {
+      const row = {
+        name: r.name,
+        amount: r.amount,
+        category_id: r.category_id,
+        due_day: r.due_day,
+        end_date: r.end_date,
+        note: r.note || null,
+      };
+      if (r.id) {
+        const { error } = await supabase
+          .from("recurring_items")
+          .update(row)
+          .eq("id", r.id);
+        if (error) throw error;
+        // Đồng bộ danh mục + tên cho các khoản chi đã ghi từ mục này
+        // (không sửa số tiền cũ — lịch sử giữ nguyên giá trị lúc trả)
+        const { error: txError } = await supabase
+          .from("transactions")
+          .update({ category_id: r.category_id, note: `Cố định: ${r.name}` })
+          .like("external_id", `recurring:${r.id}:%`);
+        if (txError) throw txError;
+      } else {
+        const { data: userData } = await supabase.auth.getUser();
+        const { error } = await supabase
+          .from("recurring_items")
+          .insert({ ...row, user_id: userData.user?.id });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["recurring"] });
+      qc.invalidateQueries({ queryKey: ["transactions"] });
+      toast.success("Đã lưu khoản cố định.");
+    },
+  });
+}
+
+export function useDeleteRecurringItem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("recurring_items").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["recurring"] });
+      toast.success("Đã xóa khoản cố định.");
+    },
+    onError: () => toast.error("Không xóa được khoản cố định."),
+  });
+}
+
+/**
+ * Thanh toán / hoàn tác khoản cố định của một tháng — ghi/xóa khoản chi mang
+ * external_id "recurring:<id>:<yyyy-mm>" (đây cũng là dấu hiệu "đã trả").
+ */
+export function useSetRecurringPaid() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: {
+      item: RecurringItem;
+      monthKey: string; // yyyy-mm
+      paid: boolean;
+    }) => {
+      const externalId = `recurring:${args.item.id}:${args.monthKey}`;
+      if (args.paid) {
+        const { data: userData } = await supabase.auth.getUser();
+        const { error } = await supabase.from("transactions").insert({
+          amount: args.item.amount,
+          category_id: args.item.category_id,
+          note: `Cố định: ${args.item.name}`,
+          user_id: userData.user?.id,
+          external_id: externalId,
+        });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("transactions")
+          .delete()
+          .eq("external_id", externalId);
+        if (error) throw error;
+      }
+    },
+    onSuccess: (_data, args) => {
+      qc.invalidateQueries({ queryKey: ["transactions"] });
+      toast.success(
+        args.paid
+          ? `Đã thanh toán "${args.item.name}" tháng này.`
+          : "Đã hoàn tác thanh toán."
+      );
+    },
+    onError: () => toast.error("Không cập nhật được thanh toán."),
   });
 }
 
@@ -411,6 +577,8 @@ export function useSeedSampleData() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["transactions"] });
       qc.invalidateQueries({ queryKey: ["budgets"] });
+      toast.success("Đã tạo dữ liệu mẫu.");
     },
+    onError: () => toast.error("Không tạo được dữ liệu mẫu."),
   });
 }

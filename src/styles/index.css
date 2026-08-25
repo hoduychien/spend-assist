@@ -99,6 +99,20 @@ button:disabled {
   animation: sheet-up 220ms var(--ease-out);
 }
 
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.toast-enter {
+  animation: toast-in 200ms var(--ease-out);
+}
+
 /* ---- Skin react-datepicker theo token của app ---- */
 .react-datepicker {
   font-family: var(--font-body);
@@ -180,7 +194,8 @@ button:disabled {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .sheet-enter {
+  .sheet-enter,
+  .toast-enter {
     animation-duration: 1ms;
   }
   * {

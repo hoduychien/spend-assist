@@ -7,6 +7,7 @@ import {
   useTransactions,
 } from "../lib/queries";
 import { formatDayHeading, formatVND, monthStartISO } from "../lib/format";
+import { toast } from "../lib/toast";
 import type { Transaction } from "../lib/types";
 import { CategoryIcon } from "../components/CategoryIcon";
 import { MonthSwitcher } from "../components/MonthSwitcher";
@@ -22,12 +23,12 @@ export function TransactionsPage() {
     categoryId: categoryId || null,
   });
   const del = useDeleteTransaction();
+  const save = useSaveTransaction();
 
   const [sheet, setSheet] = useState<{ open: boolean; editing: Transaction | null }>({
     open: false,
     editing: null,
   });
-  const [undo, setUndo] = useState<Transaction | null>(null);
 
   const catById = useMemo(
     () => new Map(categories.map((c) => [c.id, c])),
@@ -48,9 +49,19 @@ export function TransactionsPage() {
   const monthTotal = transactions.reduce((s, t) => s + t.amount, 0);
 
   function remove(t: Transaction) {
-    del.mutate(t.id);
-    setUndo(t);
-    window.setTimeout(() => setUndo((u) => (u?.id === t.id ? null : u)), 7000);
+    del.mutate(t.id, {
+      onSuccess: () =>
+        toast.success("Đã xóa giao dịch.", {
+          label: "Hoàn tác",
+          onClick: () =>
+            save.mutate({
+              amount: t.amount,
+              category_id: t.category_id,
+              note: t.note ?? "",
+              occurred_on: t.occurred_on,
+            }),
+        }),
+    });
   }
 
   return (
@@ -162,17 +173,6 @@ export function TransactionsPage() {
         </div>
       )}
 
-      {/* Undo sau khi xóa — cố định góc màn hình, không đẩy layout */}
-      {undo && (
-        <div
-          role="status"
-          className="fixed bottom-20 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 whitespace-nowrap rounded-xl bg-ink px-4 py-2.5 text-sm text-paper shadow-lg lg:bottom-6"
-        >
-          Đã xóa giao dịch.
-          <UndoButton tx={undo} onDone={() => setUndo(null)} />
-        </div>
-      )}
-
       {sheet.open && (
         <TransactionSheet
           categories={categories}
@@ -181,25 +181,5 @@ export function TransactionsPage() {
         />
       )}
     </>
-  );
-}
-
-function UndoButton({ tx, onDone }: { tx: Transaction; onDone: () => void }) {
-  const save = useSaveTransaction();
-  return (
-    <button
-      onClick={async () => {
-        await save.mutateAsync({
-          amount: tx.amount,
-          category_id: tx.category_id,
-          note: tx.note ?? "",
-          occurred_on: tx.occurred_on,
-        });
-        onDone();
-      }}
-      className="whitespace-nowrap font-medium text-accent underline underline-offset-2"
-    >
-      Hoàn tác
-    </button>
   );
 }

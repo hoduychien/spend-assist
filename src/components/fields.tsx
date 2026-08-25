@@ -1,11 +1,46 @@
+import type { ReactNode } from "react";
 import Select, { components, type DropdownIndicatorProps } from "react-select";
-import { ChevronDown } from "lucide-react";
+import { Check, ChevronDown } from "lucide-react";
 import DatePicker, { registerLocale } from "react-datepicker";
 import { vi } from "date-fns/locale";
 import "react-datepicker/dist/react-datepicker.css";
 import { formatAmountInput, parseVND } from "../lib/format";
 
 registerLocale("vi", vi);
+
+// -------------------------------------------------------------- AppCheckbox
+
+/**
+ * Checkbox dùng chung — input native ẩn (giữ bàn phím + a11y), ô vuông bo góc
+ * theo token của app, dấu tick hiện bằng hiệu ứng scale, focus ring rõ ràng.
+ */
+export function AppCheckbox({
+  checked,
+  onChange,
+  label,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  label: ReactNode;
+}) {
+  return (
+    <label className="flex cursor-pointer select-none items-center gap-2.5">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="peer sr-only"
+      />
+      <span
+        aria-hidden
+        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-rule bg-paper-2 transition-all duration-150 [&_svg]:scale-50 [&_svg]:opacity-0 [&_svg]:transition-all [&_svg]:duration-150 peer-checked:border-accent-deep peer-checked:bg-accent-deep peer-checked:[&_svg]:scale-100 peer-checked:[&_svg]:opacity-100 peer-focus-visible:ring-2 peer-focus-visible:ring-[color-mix(in_oklab,var(--color-accent)_40%,transparent)] peer-focus-visible:ring-offset-1"
+      >
+        <Check size={13} strokeWidth={3.5} className="text-paper" />
+      </span>
+      <span className="text-sm text-ink-2">{label}</span>
+    </label>
+  );
+}
 
 // ------------------------------------------------------------ AppAmountInput
 
