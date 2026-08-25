@@ -34,6 +34,7 @@ import {
   AppSelect,
 } from "../components/fields";
 import { CategoryIcon } from "../components/CategoryIcon";
+import { ListSkeleton } from "../components/Skeleton";
 
 type DueStatus = "over" | "soon" | "ok";
 
@@ -97,7 +98,7 @@ export function DebtsPage() {
       </section>
 
       {isLoading ? (
-        <p className="text-sm text-muted">Đang tải…</p>
+        <ListSkeleton rows={4} />
       ) : unpaid.length === 0 ? (
         <div className="rounded-xl border border-dashed border-rule px-4 py-8 text-center">
           <p className="text-sm text-ink-2">

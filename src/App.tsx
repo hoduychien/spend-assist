@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider, useAuth } from "./lib/auth";
 import { Toaster } from "./lib/toast";
+import { Logo } from "./components/Logo";
 import { AppShell } from "./components/AppShell";
 import { AuthPage } from "./pages/AuthPage";
 import { DashboardPage } from "./pages/DashboardPage";
@@ -18,9 +19,16 @@ const queryClient = new QueryClient({
 function Protected() {
   const { session, loading } = useAuth();
   if (loading) {
+    // Splash khởi động — logo nhịp thở + wordmark, thay cho dòng chữ trơ trọi
     return (
-      <div className="flex min-h-dvh items-center justify-center text-sm text-muted">
-        Đang tải…
+      <div className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-paper">
+        <div className="animate-pulse">
+          <Logo size={56} />
+        </div>
+        <p className="flex items-center gap-2 font-display text-xl font-semibold">
+          Spend Assist
+        </p>
+        <p className="text-sm text-muted">Đang mở sổ chi tiêu của bạn…</p>
       </div>
     );
   }

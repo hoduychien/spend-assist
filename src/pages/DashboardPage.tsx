@@ -13,6 +13,7 @@ import { formatMonth, formatVND, monthStartISO } from "../lib/format";
 import { BudgetBar, budgetStatus } from "../components/BudgetBar";
 import { CategoryChart } from "../components/CategoryChart";
 import { CumulativeSpendChart, DailySpendChart } from "../components/SpendCharts";
+import { ChartSkeleton, ListSkeleton } from "../components/Skeleton";
 import { CategoryIcon } from "../components/CategoryIcon";
 import { TransactionSheet } from "../components/TransactionSheet";
 
@@ -199,7 +200,10 @@ export function DashboardPage() {
             </div>
           </div>
         ) : isLoading ? (
-          <p className="text-sm text-muted">Đang tải…</p>
+          <div className="grid gap-8 lg:grid-cols-2 lg:gap-10">
+            <ChartSkeleton />
+            <ListSkeleton rows={4} />
+          </div>
         ) : (
           <div className="rounded-xl border border-dashed border-rule px-4 py-6 text-center">
             <p className="text-sm text-ink-2">Tháng này chưa có khoản chi nào.</p>

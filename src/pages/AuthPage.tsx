@@ -227,7 +227,8 @@ export function AuthPage() {
             autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-xl border border-rule bg-paper-2 px-3 py-2.5 focus-ring outline-none"
+            placeholder="Nhập email của bạn"
+            className="w-full rounded-xl border border-rule bg-paper-2 px-3 py-2.5 focus-ring outline-none placeholder:text-muted"
           />
         </label>
         <label>
@@ -239,7 +240,8 @@ export function AuthPage() {
             autoComplete={mode === "login" ? "current-password" : "new-password"}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-xl border border-rule bg-paper-2 px-3 py-2.5 focus-ring outline-none"
+            placeholder="Ít nhất 6 ký tự"
+            className="w-full rounded-xl border border-rule bg-paper-2 px-3 py-2.5 focus-ring outline-none placeholder:text-muted"
           />
         </label>
 

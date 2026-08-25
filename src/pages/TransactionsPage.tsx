@@ -10,6 +10,7 @@ import { formatDayHeading, formatVND, monthStartISO } from "../lib/format";
 import { toast } from "../lib/toast";
 import type { Transaction } from "../lib/types";
 import { CategoryIcon } from "../components/CategoryIcon";
+import { ListSkeleton } from "../components/Skeleton";
 import { MonthSwitcher } from "../components/MonthSwitcher";
 import { TransactionSheet } from "../components/TransactionSheet";
 import { AppSelect } from "../components/fields";
@@ -105,7 +106,7 @@ export function TransactionsPage() {
       )}
 
       {isLoading ? (
-        <p className="text-sm text-muted">Đang tải…</p>
+        <ListSkeleton rows={6} />
       ) : groups.length === 0 ? (
         <div className="rounded-xl border border-dashed border-rule px-4 py-8 text-center">
           <p className="text-sm text-ink-2">Không có giao dịch nào trong khoảng này.</p>

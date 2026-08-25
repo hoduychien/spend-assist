@@ -99,6 +99,27 @@ button:disabled {
   animation: sheet-up 220ms var(--ease-out);
 }
 
+/* Skeleton loading — dải sáng chạy ngang trên nền paper */
+@keyframes skeleton-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+.skeleton {
+  border-radius: 0.5rem;
+  background: linear-gradient(
+    90deg,
+    var(--color-paper-2) 25%,
+    var(--color-paper-3) 50%,
+    var(--color-paper-2) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
 @keyframes toast-in {
   from {
     opacity: 0;
@@ -197,6 +218,10 @@ button:disabled {
   .sheet-enter,
   .toast-enter {
     animation-duration: 1ms;
+  }
+  .skeleton {
+    animation: none;
+    background: var(--color-paper-2);
   }
   * {
     transition-duration: 1ms !important;

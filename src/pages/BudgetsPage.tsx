@@ -25,6 +25,7 @@ import type { Category } from "../lib/types";
 import { BudgetBar } from "../components/BudgetBar";
 import { CategoryIcon } from "../components/CategoryIcon";
 import { MonthSwitcher } from "../components/MonthSwitcher";
+import { ListSkeleton } from "../components/Skeleton";
 import { AppSelect } from "../components/fields";
 
 /** Mục tiêu đang thêm/sửa trong sheet. categoryId null = ngân sách cả tháng. */
@@ -310,8 +311,10 @@ export function BudgetsPage() {
         )}
       </section>
 
+      {budgetsLoading && <ListSkeleton rows={4} />}
+
       {/* Danh mục đã có ngân sách */}
-      {withBudget.length > 0 && (
+      {!budgetsLoading && withBudget.length > 0 && (
         <section aria-label="Ngân sách theo danh mục" className="flex flex-col gap-5">
           {withBudget.map((c) => {
             const budget = budgetByCategory.get(c.id)!;
@@ -343,7 +346,7 @@ export function BudgetsPage() {
       )}
 
       {/* Danh mục chưa có ngân sách */}
-      {withoutBudget.length > 0 && (
+      {!budgetsLoading && withoutBudget.length > 0 && (
         <section aria-label="Danh mục chưa đặt ngân sách" className="mt-8">
           <h2 className="mb-2 text-sm font-medium text-ink-2">Chưa đặt hạn mức</h2>
           <ul className="divide-y divide-rule-2">
